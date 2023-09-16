@@ -29,7 +29,7 @@ pub const VERIFY_CONFIG_ENV: &'static str = "VERIFY_CONFIG";
 /// Configuration for [`DefaultMynaCircuit`].
 #[derive(Debug, Clone)]
 pub struct DefaultMynaConfig<F: PrimeField> {
-    pub sign_verify_config: SignatureVerificationConfig<F>,
+    pub signature_verification_config: SignatureVerificationConfig<F>,
     pub instances: Column<Instance>,
 }
 
@@ -55,7 +55,16 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
     }
 
     fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
-        todo!()
+        // todo read from config file
+        let range_config = RangeConfig::configure(meta, Vertical, &[10], &[1], 10, 17, 0, 18);
+        // todo read public_key_bits from config file
+        let signature_verification_config = SignatureVerificationConfig::configure(range_config.clone(), 2048);
+        let instances = meta.instance_column();
+
+        DefaultMynaConfig {
+            signature_verification_config,
+            instances
+        }
     }
 
     fn synthesize(&self, config: Self::Config, layouter: impl Layouter<F>) -> Result<(), Error> {
