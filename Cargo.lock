@@ -299,6 +299,8 @@ dependencies = [
  "num-bigint",
  "rand",
  "rsa",
+ "serde",
+ "serde_json",
  "sha2",
 ]
 
