@@ -40,11 +40,9 @@ pub struct DefaultMynaCircuit<F: PrimeField> {
     pub public_key_n: BigUint, // pub public_key: RSAPublicKey<F>,
     _f: PhantomData<F>,
 }
-
 impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
     type Config = DefaultMynaConfig<F>;
     type FloorPlanner = SimpleFloorPlanner;
-
     fn without_witnesses(&self) -> Self {
         Self {
             hashed: vec![],
@@ -67,9 +65,35 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
         }
     }
 
-    fn synthesize(&self, config: Self::Config, layouter: impl Layouter<F>) -> Result<(), Error> {
+    fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<F>) -> Result<(), Error> {
+        let mut first_pass = SKIP_FIRST_PASS;
+        let signature_bytes = &self.signature;
+        let public_key_n = &self.public_key_n;
+        let hashed_bytes = &self.hashed;
+
+        layouter.assign_region(|| "MynaWallet", |region| {
+            // todo what is this?
+            if first_pass {
+                first_pass = false;
+                return Ok(());
+            }
+
+            let ctx = &mut config.signature_verification_config.rsa_config.new_context(region);
+            let e = RSAPubE::Fix(BigUint::from(Self::DEFAULT_E));
+            let public_key = RSAPublicKey::<F>::new(Value::known(public_key_n.clone()), e);
+            let signature = RSASignature::<F>::new(Value::known(BigUint::from_bytes_be(&signature_bytes)));
+            // todo convert hashed bytes to assigned value
+            let (assigned_public_key, assigned_signature) = config.signature_verification_config.verify_signature(ctx, &hashed_bytes, public_key, signature.clone())?;
+
+            Ok(())
+        },)?;
+
         todo!()
     }
+}
+
+impl<F: PrimeField> DefaultMynaCircuit<F> {
+    pub const DEFAULT_E: u128 = 65537;
 }
 
 #[cfg(test)]
