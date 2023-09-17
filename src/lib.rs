@@ -83,11 +83,10 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
             let e = RSAPubE::Fix(BigUint::from(Self::DEFAULT_E));
             let public_key = RSAPublicKey::<F>::new(Value::known(public_key_n.clone()), e);
             let signature = RSASignature::<F>::new(Value::known(BigUint::from_bytes_be(&signature_bytes)));
-
-            // todo convert hashed_message represented by vector of u8 or BigUint to assigned value
-            // todo hashed_msg_assigned
+            // todo is this ok?
+            let hashed_msg_limbs = decompose_biguint::<F>(&hashed_message, 4, 256/4);
+            let hashed_msg_assigned = hashed_msg_limbs.into_iter().map(|limb| config.signature_verification_config.rsa_config.gate().load_witness(ctx, Value::known(limb))).collect::<Vec<AssignedValue<F>>>();
             let (assigned_public_key, assigned_signature) = config.signature_verification_config.verify_signature(ctx, &hashed_msg_assigned, public_key, signature.clone())?;
-
             Ok(())
         },)?;
 
