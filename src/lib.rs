@@ -46,7 +46,7 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
     type FloorPlanner = SimpleFloorPlanner;
     fn without_witnesses(&self) -> Self {
         Self {
-            hashed: vec![],
+            hashed: self.hashed.clone(),
             signature: vec![],
             public_key_n: self.public_key_n.clone(),
             _f: PhantomData,
@@ -59,6 +59,7 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
         // todo read public_key_bits from config file
         let signature_verification_config = SignatureVerificationConfig::configure(range_config.clone(), 2048);
         let instances = meta.instance_column();
+        meta.enable_equality(instances);
 
         DefaultMynaConfig {
             signature_verification_config,
@@ -90,12 +91,21 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
             Ok(())
         },)?;
 
-        todo!()
+        Ok(())
     }
 }
 
 impl<F: PrimeField> DefaultMynaCircuit<F> {
     pub const DEFAULT_E: u128 = 65537;
+
+    pub fn new(hashed: BigUint, signature: Vec<u8>, public_key_n: BigUint) -> Self {
+        Self {
+            hashed,
+            signature,
+            public_key_n,
+            _f: PhantomData,
+        }
+    }
 }
 
 #[cfg(test)]
