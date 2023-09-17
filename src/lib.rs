@@ -3,12 +3,12 @@ pub mod signature_verification;
 use crate::signature_verification::*;
 
 use halo2_base::halo2_proofs::circuit;
-use halo2_base::halo2_proofs::circuit::{SimpleFloorPlanner, Value};
+use halo2_base::halo2_proofs::circuit::{Cell, SimpleFloorPlanner, Value};
 use halo2_base::halo2_proofs::plonk::{Circuit, Column, ConstraintSystem, Instance};
 use halo2_base::halo2_proofs::{circuit::Layouter, plonk::Error};
 use halo2_base::utils::fe_to_biguint;
 use halo2_base::utils::{decompose_fe_to_u64_limbs, value_to_option};
-use halo2_base::QuantumCell;
+use halo2_base::{AssignedValue, QuantumCell};
 use halo2_base::{gates::range::RangeStrategy::Vertical, SKIP_FIRST_PASS};
 use halo2_base::{
     gates::{flex_gate::FlexGateConfig, range::RangeConfig, GateInstructions, RangeInstructions},
@@ -21,6 +21,7 @@ use rsa::PublicKeyParts;
 use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
 use std::marker::PhantomData;
+use halo2_base::halo2_proofs::dev::CellValue::Assigned;
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +36,7 @@ pub struct DefaultMynaConfig<F: PrimeField> {
 
 #[derive(Debug, Clone)]
 pub struct DefaultMynaCircuit<F: PrimeField> {
-    pub hashed: Vec<u8>, // A SHA256 hashed message
+    pub hashed: BigUint, // A SHA256 hashed message
     pub signature: Vec<u8>, // A signature
     pub public_key_n: BigUint, // pub public_key: RSAPublicKey<F>,
     _f: PhantomData<F>,
@@ -69,7 +70,7 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
         let mut first_pass = SKIP_FIRST_PASS;
         let signature_bytes = &self.signature;
         let public_key_n = &self.public_key_n;
-        let hashed_bytes = &self.hashed;
+        let hashed_message = &self.hashed;
 
         layouter.assign_region(|| "MynaWallet", |region| {
             // todo what is this?
@@ -82,8 +83,10 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
             let e = RSAPubE::Fix(BigUint::from(Self::DEFAULT_E));
             let public_key = RSAPublicKey::<F>::new(Value::known(public_key_n.clone()), e);
             let signature = RSASignature::<F>::new(Value::known(BigUint::from_bytes_be(&signature_bytes)));
-            // todo convert hashed bytes to assigned value
-            let (assigned_public_key, assigned_signature) = config.signature_verification_config.verify_signature(ctx, &hashed_bytes, public_key, signature.clone())?;
+
+            // todo convert hashed_message represented by vector of u8 or BigUint to assigned value
+            // todo hashed_msg_assigned
+            let (assigned_public_key, assigned_signature) = config.signature_verification_config.verify_signature(ctx, &hashed_msg_assigned, public_key, signature.clone())?;
 
             Ok(())
         },)?;
