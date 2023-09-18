@@ -3,7 +3,7 @@ pub mod signature_verification;
 use crate::signature_verification::*;
 
 use halo2_base::halo2_proofs::circuit::{SimpleFloorPlanner, Value};
-use halo2_base::halo2_proofs::plonk::{Circuit, ConstraintSystem};
+use halo2_base::halo2_proofs::plonk::{Circuit, Column, ConstraintSystem, Instance};
 use halo2_base::halo2_proofs::{circuit::Layouter, plonk::Error};
 use halo2_base::AssignedValue;
 use halo2_base::{gates::range::RangeStrategy::Vertical, SKIP_FIRST_PASS};
@@ -12,6 +12,7 @@ use halo2_base::{
     utils::PrimeField,
 };
 
+use halo2_base::halo2_proofs::dev::CellValue::Assigned;
 pub use halo2_rsa;
 use halo2_rsa::*;
 use num_bigint::BigUint;
@@ -23,6 +24,7 @@ pub const VERIFY_CONFIG_ENV: &str = "VERIFY_CONFIG";
 #[derive(Debug, Clone)]
 pub struct DefaultMynaConfig<F: PrimeField> {
     pub signature_verification_config: SignVerifyConfig<F>,
+    instance: Column<Instance>,
 }
 
 #[derive(Debug, Clone)]
@@ -50,8 +52,12 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
         // todo read public_key_bits from config file
         let signature_verification_config = SignVerifyConfig::configure(range_config, 2048);
 
+        let instance = meta.instance_column();
+        meta.enable_equality(instance);
+
         DefaultMynaConfig {
             signature_verification_config,
+            instance,
         }
     }
 
@@ -64,6 +70,8 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
         let signature_bytes = &self.signature;
         let public_key_n = &self.public_key_n;
         let hashed_message = &self.hashed;
+
+        let mut public_cell = vec![];
 
         layouter.assign_region(
             || "MynaWallet",
@@ -93,13 +101,29 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
                             .load_witness(ctx, Value::known(F::from(*limb as u64)))
                     })
                     .collect::<Vec<AssignedValue<F>>>();
-                let (_assigned_public_key, _assigned_signature) = config
+                let (assigned_public_key, assigned_signature) = config
                     .signature_verification_config
                     .verify_signature(ctx, &hashed_msg_assigned, public_key, signature)?;
+
+                let _ = assigned_public_key
+                    .n
+                    .limbs()
+                    .iter()
+                    .map(|v| public_cell.push(v.cell));
+
+                let _ = assigned_signature
+                    .c
+                    .limbs()
+                    .iter()
+                    .map(|v| public_cell.push(v.cell));
 
                 Ok(())
             },
         )?;
+
+        for (idx, cell) in public_cell.into_iter().enumerate() {
+            layouter.constrain_instance(cell, config.instance, idx)?;
+        }
 
         Ok(())
     }
@@ -157,6 +181,26 @@ mod test {
             .expect("fail to sign a hashed message.");
 
         let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
+
+        let mut public_inputs = vec![];
+
+        let _ = public_key
+            .n()
+            .clone()
+            .to_bytes_be()
+            .iter()
+            .map(|v| public_inputs.push(v));
+
+        let _ = sign.to_vec().iter().map(|v| public_inputs.push(v));
+
+        // let _ = assigned_public_key.n.limbs()
+        //     .iter().map(|v| public_cell.push(v.cell));
+        //
+        // let _ = assigned_signature
+        //     .c
+        //     .limbs()
+        //     .iter()
+        //     .map(|v| public_cell.push(v.cell));
 
         let circuit =
             DefaultMynaCircuit::<Fr>::new(hashed_msg.to_vec(), sign.to_vec(), public_key_n);
