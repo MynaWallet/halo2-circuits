@@ -81,7 +81,7 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
                 let e = RSAPubE::Fix(BigUint::from(Self::DEFAULT_E));
                 let public_key = RSAPublicKey::<F>::new(Value::known(public_key_n.clone()), e);
                 let signature =
-                    RSASignature::<F>::new(Value::known(BigUint::from_bytes_be(&signature_bytes)));
+                    RSASignature::<F>::new(Value::known(BigUint::from_bytes_be(signature_bytes)));
 
                 let hashed_msg_assigned = hashed_message
                     .iter()
@@ -146,9 +146,7 @@ mod test {
         }
 
         // 3. Compute the SHA256 hash of `msg`.
-        let hashed_msg = Sha256::digest(&msg);
-
-        println!("len hashed msg {}", hashed_msg.len());
+        let hashed_msg = Sha256::digest(msg);
 
         // 4. Generate a pkcs1v15 signature.
         let padding = PaddingScheme::PKCS1v15Sign {
