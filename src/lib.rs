@@ -49,8 +49,6 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
         let range_config = RangeConfig::configure(meta, Vertical, &[10], &[1], 10, 17, 0, 18);
         // todo read public_key_bits from config file
         let signature_verification_config = SignatureVerificationConfig::configure(range_config.clone(), 2048);
-        let instances = meta.instance_column();
-        meta.enable_equality(instances);
 
         DefaultMynaConfig {
             signature_verification_config,
@@ -138,8 +136,6 @@ mod test {
         let mut sign = private_key
             .sign(padding, &hashed_msg)
             .expect("fail to sign a hashed message.");
-
-        println!("{:?}", sign);
 
         let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
 
