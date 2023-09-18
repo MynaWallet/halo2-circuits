@@ -23,7 +23,6 @@ pub const VERIFY_CONFIG_ENV: &'static str = "VERIFY_CONFIG";
 #[derive(Debug, Clone)]
 pub struct DefaultMynaConfig<F: PrimeField> {
     pub signature_verification_config: SignatureVerificationConfig<F>,
-    pub instances: Column<Instance>,
 }
 
 #[derive(Debug, Clone)]
@@ -55,7 +54,6 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
 
         DefaultMynaConfig {
             signature_verification_config,
-            instances
         }
     }
 
@@ -80,6 +78,7 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
             let hashed_msg_limbs = decompose_biguint::<F>(&hashed_message, 4, 256/4);
             let hashed_msg_assigned = hashed_msg_limbs.into_iter().map(|limb| config.signature_verification_config.rsa_config.gate().load_witness(ctx, Value::known(limb))).collect::<Vec<AssignedValue<F>>>();
             let (assigned_public_key, assigned_signature) = config.signature_verification_config.verify_signature(ctx, &hashed_msg_assigned, public_key, signature.clone())?;
+
             Ok(())
         },)?;
 
@@ -140,9 +139,11 @@ mod test {
             .sign(padding, &hashed_msg)
             .expect("fail to sign a hashed message.");
 
+        println!("{:?}", sign);
+
         let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
 
-        let circuit = DefaultMynaCircuit::<Fr>::new(BigUint::from_bytes_be(&hashed_msg), sign.as_mut_slice().to_vec(), public_key_n);
+        let circuit = DefaultMynaCircuit::<Fr>::new(BigUint::from_bytes_be(&hashed_msg), sign.to_vec(), public_key_n);
         let prover = MockProver::run(19, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
     }
