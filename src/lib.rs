@@ -2,28 +2,20 @@ pub mod signature_verification;
 
 use crate::signature_verification::*;
 
-use halo2_base::halo2_proofs::circuit;
-use halo2_base::halo2_proofs::circuit::{Cell, SimpleFloorPlanner, Value};
+use halo2_base::halo2_proofs::circuit::{SimpleFloorPlanner, Value};
 use halo2_base::halo2_proofs::plonk::{Circuit, Column, ConstraintSystem, Instance};
 use halo2_base::halo2_proofs::{circuit::Layouter, plonk::Error};
-use halo2_base::utils::fe_to_biguint;
-use halo2_base::utils::{decompose_fe_to_u64_limbs, value_to_option};
-use halo2_base::{AssignedValue, QuantumCell};
+use halo2_base::{AssignedValue};
 use halo2_base::{gates::range::RangeStrategy::Vertical, SKIP_FIRST_PASS};
 use halo2_base::{
-    gates::{flex_gate::FlexGateConfig, range::RangeConfig, GateInstructions, RangeInstructions},
+    gates::{range::RangeConfig, GateInstructions},
     utils::PrimeField,
 };
 
 pub use halo2_rsa;
 use halo2_rsa::*;
-use rsa::PublicKeyParts;
-use sha2::{Digest, Sha256};
-use std::io::{Read, Write};
 use std::marker::PhantomData;
-use halo2_base::halo2_proofs::dev::CellValue::Assigned;
 use num_bigint::BigUint;
-use serde::{Deserialize, Serialize};
 
 pub const VERIFY_CONFIG_ENV: &'static str = "VERIFY_CONFIG";
 
@@ -112,16 +104,13 @@ impl<F: PrimeField> DefaultMynaCircuit<F> {
 mod test {
     use super::*;
     use halo2_base::halo2_proofs::dev::MockProver;
-    use halo2_base::{gates::range::RangeStrategy::Vertical, SKIP_FIRST_PASS};
-    use halo2_base::{
-        gates::{
-            flex_gate::FlexGateConfig, range::RangeConfig, GateInstructions, RangeInstructions,
-        },
-        utils::PrimeField,
+    use halo2_base::halo2_proofs::{
+        halo2curves::bn256::{Fr},
     };
+
     use rand::thread_rng;
     use rand::Rng;
-    use rsa::BigUint;
+    use num_bigint::BigUint;
     use rsa::{Hash, PaddingScheme, PublicKeyParts, RsaPrivateKey, RsaPublicKey};
     use sha2::{Digest, Sha256};
 
@@ -151,11 +140,10 @@ mod test {
             .sign(padding, &hashed_msg)
             .expect("fail to sign a hashed message.");
 
-        // 5. Generate a SignatureVerificationConfig
+        let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
 
-        // let range_config = RangeConfig::configure(meta, Vertical, &[10], &[1], 10, 17, 0, 18);
-
-        // let signature_verification_config =
-        //     SignatureVerificationConfig::configure(range_config, bits as usize);
+        let circuit = DefaultMynaCircuit::<Fr>::new(BigUint::from_bytes_be(&hashed_msg), sign.as_mut_slice().to_vec(), public_key_n);
+        let prover = MockProver::run(19, &circuit, vec![]).unwrap();
+        assert_eq!(prover.verify(), Ok(()));
     }
 }
