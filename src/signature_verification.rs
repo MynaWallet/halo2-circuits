@@ -91,7 +91,7 @@ impl<F: PrimeField> SignVerifyConfig<F> {
         let mut hashed_u64s = vec![];
 
         let bases = (0..limb_bytes)
-            .map(|i| F::from((1u64 << (8 * i)) as u64))
+            .map(|i| F::from(1u64 << (8 * i)))
             .map(QuantumCell::Constant)
             .collect::<Vec<QuantumCell<F>>>();
 
