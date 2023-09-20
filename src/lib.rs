@@ -182,30 +182,23 @@ mod test {
 
         let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
 
-        let mut public_inputs = vec![];
-
-        let _ = public_key
+        // 5. Convert the public key and signature to vectors of Fr.
+        let pub_key_vec = public_key
             .n()
             .clone()
             .to_bytes_be()
             .iter()
-            .map(|v| public_inputs.push(v));
+            .map(|v| Fr::from(*v as u64))
+            .collect::<Vec<Fr>>();
+        let sign_vec = sign.to_vec().iter().map(|v| Fr::from(*v as u64))
+            .collect::<Vec<Fr>>();
 
-        let _ = sign.to_vec().iter().map(|v| public_inputs.push(v));
-
-        // let _ = assigned_public_key.n.limbs()
-        //     .iter().map(|v| public_cell.push(v.cell));
-        //
-        // let _ = assigned_signature
-        //     .c
-        //     .limbs()
-        //     .iter()
-        //     .map(|v| public_cell.push(v.cell));
+        // 6. Concatenate the public key and signature.
+        let public_inputs = pub_key_vec.iter().chain(sign_vec.iter()).cloned().collect::<Vec<Fr>>();
 
         let circuit =
             DefaultMynaCircuit::<Fr>::new(hashed_msg.to_vec(), sign.to_vec(), public_key_n);
-        //任意のpublic_keyとsignとhashed_msgを受け取れるようなサーキットに変更する必要がある。
-        let prover = MockProver::run(19, &circuit, vec![]).unwrap();
+        let prover = MockProver::run(19, &circuit, vec![public_inputs]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
     }
 }
