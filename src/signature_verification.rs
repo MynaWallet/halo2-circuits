@@ -80,7 +80,7 @@ impl<F: PrimeField> SignVerifyConfig<F> {
         hash_bytes: &[AssignedValue<'v, F>],
         public_key: RSAPublicKey<F>,
         signature: RSASignature<F>,
-    ) -> Result<(AssignedRSAPublicKey<'a, F>, AssignedRSASignature<'a, F>), Error> {
+    ) -> Result<(AssignedRSAPublicKey<'a, F>, AssignedRSASignature<'a, F>, Vec<AssignedValue<'v, F>>), Error> {
         let gate = self.rsa_config.gate();
         let mut hash_bytes = hash_bytes.to_vec();
         hash_bytes.reverse();
@@ -114,6 +114,6 @@ impl<F: PrimeField> SignVerifyConfig<F> {
         )?;
         gate.assert_is_const(ctx, &is_sign_valid, F::one());
 
-        Ok((public_key, signature))
+        Ok((public_key, signature, hashed_u64s))
     }
 }

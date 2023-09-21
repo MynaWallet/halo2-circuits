@@ -101,7 +101,7 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
                             .load_witness(ctx, Value::known(F::from(*limb as u64)))
                     })
                     .collect::<Vec<AssignedValue<F>>>();
-                let (assigned_public_key, assigned_signature) = config
+                let (assigned_public_key, assigned_signature, assigned_hash) = config
                     .signature_verification_config
                     .verify_signature(ctx, &hashed_msg_assigned, public_key, signature)?;
 
@@ -116,6 +116,8 @@ impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
                     .limbs()
                     .iter()
                     .map(|v| public_cell.push(v.cell));
+
+                let _ = assigned_hash.iter().map(|v| public_cell.push(v.cell));
 
                 Ok(())
             },
@@ -182,7 +184,7 @@ mod test {
 
         let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
 
-        // 5. Convert the public key and signature to vectors of Fr.
+        // 公開鍵をVec<Fr>に変換
         let pub_key_vec = public_key
             .n()
             .clone()
@@ -190,11 +192,27 @@ mod test {
             .iter()
             .map(|v| Fr::from(*v as u64))
             .collect::<Vec<Fr>>();
-        let sign_vec = sign.to_vec().iter().map(|v| Fr::from(*v as u64))
+
+        // 署名をVec<Fr>に変換
+        let sign_vec = sign
+            .to_vec()
+            .iter()
+            .map(|v| Fr::from(*v as u64))
             .collect::<Vec<Fr>>();
 
-        // 6. Concatenate the public key and signature.
-        let public_inputs = pub_key_vec.iter().chain(sign_vec.iter()).cloned().collect::<Vec<Fr>>();
+        // ハッシュされたメッセージをVec<Fr>に変換
+        let hashed_vec = hashed_msg
+            .iter()
+            .map(|v| Fr::from(*v as u64))
+            .collect::<Vec<Fr>>();
+
+        // 公開鍵、署名、ハッシュされたメッセージを結合
+        let public_inputs = pub_key_vec
+            .iter()
+            .chain(sign_vec.iter())
+            .chain(hashed_vec.iter())
+            .cloned()
+            .collect::<Vec<Fr>>();
 
         let circuit =
             DefaultMynaCircuit::<Fr>::new(hashed_msg.to_vec(), sign.to_vec(), public_key_n);
