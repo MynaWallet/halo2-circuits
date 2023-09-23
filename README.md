@@ -1,6 +1,6 @@
-# Myna Halo2 Circuits
+# MynaWallet Halo2 Circuits
 
-This repository aims to create proofs which verifies the RSA signatures signed by myna-card(Japan's ID Card).
+This repository aims to create proofs which verifies the RSA signatures signed by Myna Card(Japan's ID Card).
 
 ## Getting Started
 
@@ -40,7 +40,7 @@ Result Not Yet
 - Test & Benchmarks
 - Verifier Contracts
 - Example Codes which call Prover
-- (Phase2) RSA Verification Circuit (raw value as input)
+- (Phase2) RSA Verification Circuit (DER-encoded certificate as input)
 - (Phase3) Selective Disclosure
 
 See more details on the [issues](https://github.com/MynaWallet/halo2-circuits/issues)
