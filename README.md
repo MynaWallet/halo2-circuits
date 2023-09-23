@@ -49,6 +49,10 @@ See more details on the [issues](https://github.com/MynaWallet/halo2-circuits/is
 
 Please make sure to cut your own branch from `feature/base`.
 
+## Specs
+
+- [Signature Verification](./spec/SignatureVerification.md)
+
 ## References
 
 You can refer to these repos of RSA verification circuits.
