@@ -3,6 +3,17 @@
 version = 3
 
 [[package]]
+name = "ark-std"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1df2c09229cbc5a028b1d70e00fdb2acee28b1055dfb5ca73eea49c5a25c4e7c"
+dependencies = [
+ "colored",
+ "num-traits",
+ "rand",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -25,6 +36,21 @@ name = "base64ct"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
+
+[[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "bitflags"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
 
 [[package]]
 name = "bitvec"
@@ -87,10 +113,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
+name = "cc"
+version = "1.0.83"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1174fb0b6ec23863f8b971027804a42614e347eafb0a95bf0b12cdae21fc4d0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "colored"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2674ec482fbc38012cf31e6c42ba0177b431a0cb6f15fe40efa5aab1bda516f6"
+dependencies = [
+ "is-terminal",
+ "lazy_static",
+ "windows-sys",
+]
 
 [[package]]
 name = "console_error_panic_hook"
@@ -223,6 +269,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 
 [[package]]
+name = "errno"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "136526188508e25c6fef639d7927dfb3e0e3084488bf202267829cf7fc23dbdd"
+dependencies = [
+ "errno-dragonfly",
+ "libc",
+ "windows-sys",
+]
+
+[[package]]
+name = "errno-dragonfly"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa68f1b12764fab894d2755d2518754e71b4fd80ecfb822714a1206c2aab39bf"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "ff"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -276,10 +343,25 @@ dependencies = [
 [[package]]
 name = "halo2-base"
 version = "0.2.2"
+source = "git+https://github.com/axiom-crypto/halo2-lib.git?tag=v0.2.2#0b1c3e09d01d278656d83c29412fc12e015e717a"
+dependencies = [
+ "ff",
+ "halo2_proofs 0.2.0 (git+https://github.com/axiom-crypto/halo2.git?tag=v2023_01_17)",
+ "itertools",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "rand_chacha",
+ "rustc-hash",
+]
+
+[[package]]
+name = "halo2-base"
+version = "0.2.2"
 source = "git+https://github.com/axiom-crypto/halo2-lib.git?rev=9860acc#9860accef8289ec8e1ac850596842823edcf2c0f"
 dependencies = [
  "ff",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/privacy-scaling-explorations/halo2.git?tag=v2023_01_20)",
  "itertools",
  "num-bigint",
  "num-integer",
@@ -292,14 +374,17 @@ dependencies = [
 name = "halo2-circuits"
 version = "0.1.0"
 dependencies = [
- "halo2-base",
+ "halo2-base 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?rev=9860acc)",
  "halo2-dynamic-sha256",
- "halo2-ecc",
+ "halo2-ecc 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?rev=9860acc)",
  "halo2-rsa",
  "num-bigint",
  "rand",
  "rsa",
+ "serde",
+ "serde_json",
  "sha2",
+ "snark-verifier-sdk",
 ]
 
 [[package]]
@@ -308,8 +393,8 @@ version = "0.1.0"
 source = "git+https://github.com/zkemail/halo2-dynamic-sha256.git?branch=main#633b0620f9ca63cb79890cfa2f805a6de544cfcc"
 dependencies = [
  "generic-array",
- "halo2-base",
- "halo2-ecc",
+ "halo2-base 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?rev=9860acc)",
+ "halo2-ecc 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?rev=9860acc)",
  "hex",
  "itertools",
  "log",
@@ -321,11 +406,30 @@ dependencies = [
 [[package]]
 name = "halo2-ecc"
 version = "0.2.2"
+source = "git+https://github.com/axiom-crypto/halo2-lib.git?tag=v0.2.2#0b1c3e09d01d278656d83c29412fc12e015e717a"
+dependencies = [
+ "ff",
+ "group",
+ "halo2-base 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?tag=v0.2.2)",
+ "itertools",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "rand",
+ "rand_chacha",
+ "rand_core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "halo2-ecc"
+version = "0.2.2"
 source = "git+https://github.com/axiom-crypto/halo2-lib.git?rev=9860acc#9860accef8289ec8e1ac850596842823edcf2c0f"
 dependencies = [
  "ff",
  "group",
- "halo2-base",
+ "halo2-base 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?rev=9860acc)",
  "itertools",
  "num-bigint",
  "num-integer",
@@ -344,8 +448,8 @@ source = "git+https://github.com/zkemail/halo2-rsa.git?branch=main#f770cfa1344ef
 dependencies = [
  "console_error_panic_hook",
  "getrandom",
- "halo2-base",
- "halo2-ecc",
+ "halo2-base 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?rev=9860acc)",
+ "halo2-ecc 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?rev=9860acc)",
  "js-sys",
  "num-bigint",
  "num-traits",
@@ -364,12 +468,27 @@ dependencies = [
 [[package]]
 name = "halo2_proofs"
 version = "0.2.0"
+source = "git+https://github.com/axiom-crypto/halo2.git?tag=v2023_01_17#475e45f52a0774ceb81304dd6a3a97dddd07662e"
+dependencies = [
+ "blake2b_simd",
+ "ff",
+ "group",
+ "halo2curves 0.3.1 (git+https://github.com/axiom-crypto/halo2.git?tag=v2023_01_17)",
+ "rand_core",
+ "rayon",
+ "rustc-hash",
+ "tracing",
+]
+
+[[package]]
+name = "halo2_proofs"
+version = "0.2.0"
 source = "git+https://github.com/privacy-scaling-explorations/halo2.git?tag=v2023_01_20#c7e42e41f8141745ba0b90213438f240d55cb347"
 dependencies = [
  "blake2b_simd",
  "ff",
  "group",
- "halo2curves",
+ "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations/halo2curves.git?tag=0.3.1)",
  "rand_core",
  "rayon",
  "sha3",
@@ -394,6 +513,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "halo2curves"
+version = "0.3.1"
+source = "git+https://github.com/axiom-crypto/halo2.git?tag=v2023_01_17#475e45f52a0774ceb81304dd6a3a97dddd07662e"
+dependencies = [
+ "ff",
+ "group",
+ "lazy_static",
+ "num-bigint",
+ "num-traits",
+ "pasta_curves",
+ "rand",
+ "rand_core",
+ "serde",
+ "static_assertions",
+ "subtle",
+]
+
+[[package]]
 name = "hermit-abi"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -404,6 +541,17 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "is-terminal"
+version = "0.4.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb0889898416213fab133e1d33a0e5858a48177452750691bde3666d0fdbaf8b"
+dependencies = [
+ "hermit-abi",
+ "rustix",
+ "windows-sys",
+]
 
 [[package]]
 name = "itertools"
@@ -458,6 +606,12 @@ name = "libm"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7012b1bbb0719e1097c47611d3898568c546d597c2e74d66f6087edd5233ff4"
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a9bad9f94746442c783ca431b22403b519cd7fbeed0533fdd6328b2f2212128"
 
 [[package]]
 name = "log"
@@ -610,6 +764,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "poseidon"
+version = "0.2.0"
+source = "git+https://github.com/axiom-crypto/halo2.git?tag=v2023_01_17#475e45f52a0774ceb81304dd6a3a97dddd07662e"
+dependencies = [
+ "group",
+ "halo2curves 0.3.1 (git+https://github.com/axiom-crypto/halo2.git?tag=v2023_01_17)",
+ "subtle",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -719,6 +883,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
+name = "rustix"
+version = "0.38.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2f9da0cbd88f9f09e7814e388301c8414c51c62aa6ce1e4b5c551d49d96e531"
+dependencies = [
+ "bitflags",
+ "errno",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -800,6 +977,46 @@ name = "smallvec"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62bb4feee49fdd9f707ef802e22365a35de4b7b299de4763d44bfea899442ff9"
+
+[[package]]
+name = "snark-verifier"
+version = "0.1.0"
+source = "git+https://github.com/axiom-crypto/snark-verifier.git?tag=v2023_01_30#c36ff8c18c46d9b36d0a780ccaaf88185cf333a7"
+dependencies = [
+ "halo2-base 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?tag=v0.2.2)",
+ "halo2-ecc 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?tag=v0.2.2)",
+ "hex",
+ "itertools",
+ "lazy_static",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "poseidon",
+ "rand",
+ "rustc-hash",
+ "serde",
+]
+
+[[package]]
+name = "snark-verifier-sdk"
+version = "0.0.1"
+source = "git+https://github.com/axiom-crypto/snark-verifier.git?tag=v2023_01_30#c36ff8c18c46d9b36d0a780ccaaf88185cf333a7"
+dependencies = [
+ "ark-std",
+ "bincode",
+ "halo2-base 0.2.2 (git+https://github.com/axiom-crypto/halo2-lib.git?tag=v0.2.2)",
+ "hex",
+ "itertools",
+ "lazy_static",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "snark-verifier",
+]
 
 [[package]]
 name = "spin"
@@ -997,6 +1214,72 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "windows-sys"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "677d2418bec65e3338edb076e806bc1ec15693c5d0104683f2efe857f61056a9"
+dependencies = [
+ "windows-targets",
+]
+
+[[package]]
+name = "windows-targets"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a2fa6e2155d7247be68c096456083145c183cbbbc2764150dda45a87197940c"
+dependencies = [
+ "windows_aarch64_gnullvm",
+ "windows_aarch64_msvc",
+ "windows_i686_gnu",
+ "windows_i686_msvc",
+ "windows_x86_64_gnu",
+ "windows_x86_64_gnullvm",
+ "windows_x86_64_msvc",
+]
+
+[[package]]
+name = "windows_aarch64_gnullvm"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b38e32f0abccf9987a4e3079dfb67dcd799fb61361e53e2882c3cbaf0d905d8"
+
+[[package]]
+name = "windows_aarch64_msvc"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc35310971f3b2dbbf3f0690a219f40e2d9afcf64f9ab7cc1be722937c26b4bc"
+
+[[package]]
+name = "windows_i686_gnu"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a75915e7def60c94dcef72200b9a8e58e5091744960da64ec734a6c6e9b3743e"
+
+[[package]]
+name = "windows_i686_msvc"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f55c233f70c4b27f66c523580f78f1004e8b5a8b659e05a4eb49d4166cca406"
+
+[[package]]
+name = "windows_x86_64_gnu"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53d40abd2583d23e4718fddf1ebec84dbff8381c07cae67ff7768bbf19c6718e"
+
+[[package]]
+name = "windows_x86_64_gnullvm"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b7b52767868a23d5bab768e390dc5f5c55825b6d30b86c844ff2dc7414044cc"
+
+[[package]]
+name = "windows_x86_64_msvc"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
 
 [[package]]
 name = "wyz"
