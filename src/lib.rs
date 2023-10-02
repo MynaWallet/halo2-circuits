@@ -264,7 +264,7 @@ mod test {
 
         let circuit =
             DefaultMynaCircuit::<Fr>::new(
-                hashed_msg_2.to_vec(),
+                hashed_msg_2.to_vec(), // different message from signature
                 sign.to_vec(),
                 public_key_n
             );
