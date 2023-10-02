@@ -271,4 +271,34 @@ mod test {
         let prover = MockProver::run(19, &circuit, vec![public_inputs]).unwrap();
         assert!(prover.verify().is_err());
     }
+
+    #[test]
+    fn test_invalid_instance() {
+        let (public_key, private_key) = test_gen_key();
+        let hashed_msg = test_hash_rng();
+        let sign = test_sign(private_key, hashed_msg);
+        let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
+
+        // Frに変換
+        let pub_key_vec = vec![Fr::from(3274), Fr::from(32344)];
+        let sign_vec = vec![Fr::from(3274), Fr::from(32344)];
+        let hashed_msg_vec = vec![Fr::from(3274), Fr::from(32344)];
+
+        // 公開鍵、署名、ハッシュされたメッセージを結合
+        let public_inputs = pub_key_vec
+            .iter()
+            .chain(sign_vec.iter())
+            .chain(hashed_msg_vec.iter())
+            .cloned()
+            .collect::<Vec<Fr>>();
+
+        let circuit =
+            DefaultMynaCircuit::<Fr>::new(
+                hashed_msg.to_vec(),
+                sign.to_vec(),
+                public_key_n
+            );
+        let prover = MockProver::run(19, &circuit, vec![public_inputs]).unwrap();
+        assert!(prover.verify().is_err());
+    }
 }
