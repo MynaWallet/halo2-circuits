@@ -154,69 +154,151 @@ mod test {
     use rand::thread_rng;
     use rand::Rng;
     use rsa::{Hash, PaddingScheme, PublicKeyParts, RsaPrivateKey, RsaPublicKey};
+    use sha2::digest::Output;
     use sha2::{Digest, Sha256};
 
-    #[test]
-    fn test_signature_verification() {
+    fn test_gen_key() -> (RsaPublicKey, RsaPrivateKey) {
         let bits = 2048;
-
-        // 1. Generate a key pair.
         let mut rng = thread_rng();
+
+        // let mut rng = thread_rng();
         let private_key = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
         let public_key = RsaPublicKey::from(&private_key);
 
-        // 2. Uniformly sample a message.
+        (public_key, private_key)
+    }
+
+    fn test_sign(private_key: RsaPrivateKey, hashed_msg: Output<Sha256>) -> Vec<u8> {
+        let padding = PaddingScheme::PKCS1v15Sign {
+            hash: Some(Hash::SHA2_256),
+        };
+
+        private_key
+            .sign(padding, &hashed_msg)
+            .expect("fail to sign a hashed message.")
+    }
+
+    fn test_hash_rng() -> Output<Sha256> {
+        let mut rng = thread_rng();
         let mut msg: [u8; 128] = [0; 128];
         for x in &mut msg[..] {
             *x = rng.gen();
         }
+        Sha256::digest(msg)
+    }
 
-        // 3. Compute the SHA256 hash of `msg`.
-        let hashed_msg = Sha256::digest(msg);
+    fn test_hash_msg(msg: Vec<u8>) -> Output<Sha256> {
+        Sha256::digest(msg)
+    }
 
-        // 4. Generate a pkcs1v15 signature.
-        let padding = PaddingScheme::PKCS1v15Sign {
-            hash: Some(Hash::SHA2_256),
-        };
-        let sign = private_key
-            .sign(padding, &hashed_msg)
-            .expect("fail to sign a hashed message.");
-
-        let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
-
-        // 公開鍵をVec<Fr>に変換
-        let pub_key_vec = public_key
-            .n()
-            .clone()
-            .to_bytes_be()
-            .iter()
-            .map(|v| Fr::from(*v as u64))
-            .collect::<Vec<Fr>>();
-
-        // 署名をVec<Fr>に変換
-        let sign_vec = sign
+    fn str2field(a: Vec<u8>) -> Vec<Fr> {
+        let res = a
             .to_vec()
             .iter()
             .map(|v| Fr::from(*v as u64))
             .collect::<Vec<Fr>>();
 
-        // ハッシュされたメッセージをVec<Fr>に変換
-        let hashed_vec = hashed_msg
+        res
+    }
+
+    fn hash2field(a: Output<Sha256>) -> Vec<Fr> {
+        let res = a
+            .to_vec()
             .iter()
             .map(|v| Fr::from(*v as u64))
             .collect::<Vec<Fr>>();
+
+        res
+    }
+
+    #[test]
+    fn test_signature_verification() {
+        let (public_key, private_key) = test_gen_key();
+        let hashed_msg = test_hash_rng();
+        let sign = test_sign(private_key, hashed_msg);
+        let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
+
+        // Frに変換
+        let pub_key_vec = str2field(public_key.n().clone().to_bytes_be());
+        let sign_vec = str2field(sign.clone());
+        let hashed_msg_vec = hash2field(hashed_msg.clone());
 
         // 公開鍵、署名、ハッシュされたメッセージを結合
         let public_inputs = pub_key_vec
             .iter()
             .chain(sign_vec.iter())
-            .chain(hashed_vec.iter())
+            .chain(hashed_msg_vec.iter())
             .cloned()
             .collect::<Vec<Fr>>();
 
         let circuit =
-            DefaultMynaCircuit::<Fr>::new(hashed_msg.to_vec(), sign.to_vec(), public_key_n);
+            DefaultMynaCircuit::<Fr>::new(
+                hashed_msg.to_vec(),
+                sign.to_vec(),
+                public_key_n
+            );
         let prover = MockProver::run(19, &circuit, vec![public_inputs]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
+    }
+
+    #[test]
+    fn test_invalid_signature_verification() {
+        let (public_key, private_key) = test_gen_key();
+        let hashed_msg = test_hash_rng();
+        let hashed_msg_2 = test_hash_msg("hellohellohello".into());
+        let sign = test_sign(private_key, hashed_msg);
+        let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
+
+        // Frに変換
+        let pub_key_vec = str2field(public_key.n().clone().to_bytes_be());
+        let sign_vec = str2field(sign.clone());
+        let hashed_msg_vec = hash2field(hashed_msg_2.clone()); // set different message from sign
+
+        // 公開鍵、署名、ハッシュされたメッセージを結合
+        let public_inputs = pub_key_vec
+            .iter()
+            .chain(sign_vec.iter())
+            .chain(hashed_msg_vec.iter())
+            .cloned()
+            .collect::<Vec<Fr>>();
+
+        let circuit =
+            DefaultMynaCircuit::<Fr>::new(
+                hashed_msg_2.to_vec(), // different message from signature
+                sign.to_vec(),
+                public_key_n
+            );
+        let prover = MockProver::run(19, &circuit, vec![public_inputs]).unwrap();
+        assert!(prover.verify().is_err());
+    }
+
+    #[test]
+    fn test_invalid_instance() {
+        let (public_key, private_key) = test_gen_key();
+        let hashed_msg = test_hash_rng();
+        let sign = test_sign(private_key, hashed_msg);
+        let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
+
+        // Frに変換
+        let pub_key_vec = vec![Fr::from(3274), Fr::from(32344)];
+        let sign_vec = vec![Fr::from(3274), Fr::from(32344)];
+        let hashed_msg_vec = vec![Fr::from(3274), Fr::from(32344)];
+
+        // 公開鍵、署名、ハッシュされたメッセージを結合
+        let public_inputs = pub_key_vec
+            .iter()
+            .chain(sign_vec.iter())
+            .chain(hashed_msg_vec.iter())
+            .cloned()
+            .collect::<Vec<Fr>>();
+
+        let circuit =
+            DefaultMynaCircuit::<Fr>::new(
+                hashed_msg.to_vec(),
+                sign.to_vec(),
+                public_key_n
+            );
+        let prover = MockProver::run(19, &circuit, vec![public_inputs]).unwrap();
+        assert!(prover.verify().is_err());
     }
 }
