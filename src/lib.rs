@@ -1,222 +1,149 @@
-pub mod signature_verification;
+pub mod big_uint;
+mod instructions;
+use big_uint::*;
+pub use instructions::*;
+mod chip;
+pub use chip::*;
 
-use crate::signature_verification::*;
-
-use halo2_base::halo2_proofs::circuit::{SimpleFloorPlanner, Value};
-use halo2_base::halo2_proofs::plonk::{Circuit, Column, ConstraintSystem, Instance};
-use halo2_base::halo2_proofs::{circuit::Layouter, plonk::Error};
-use halo2_base::AssignedValue;
-use halo2_base::{gates::range::RangeStrategy::Vertical, SKIP_FIRST_PASS};
-use halo2_base::{
-    gates::{range::RangeConfig, GateInstructions},
-    utils::PrimeField,
-};
-
-use halo2_base::halo2_proofs::dev::CellValue::Assigned;
-pub use halo2_rsa;
-use halo2_rsa::*;
-use num_bigint::BigUint;
 use std::marker::PhantomData;
 
-pub const VERIFY_CONFIG_ENV: &str = "VERIFY_CONFIG";
+pub use big_uint::*;
 
-/// Configuration for [`DefaultMynaCircuit`].
-#[derive(Debug, Clone)]
-pub struct DefaultMynaConfig<F: PrimeField> {
-    pub signature_verification_config: SignVerifyConfig<F>,
-    instance: Column<Instance>,
+use halo2_base::halo2_proofs::{circuit::Value, plonk::Error};
+use halo2_base::QuantumCell;
+use halo2_base::{
+    gates::{flex_gate::FlexGateConfig, range::RangeConfig, GateInstructions, RangeInstructions},
+    utils::{bigint_to_fe, biguint_to_fe, fe_to_biguint, modulus, BigPrimeField},
+    AssignedValue, Context,
+};
+use halo2_ecc::bigint::{
+    big_is_equal, big_is_zero, big_less_than, carry_mod, mul_no_carry, negative, select, sub,
+    CRTInteger, FixedCRTInteger, FixedOverflowInteger, OverflowInteger,
+};
+use num_bigint::{BigInt, BigUint, Sign};
+use num_traits::{One, Signed, Zero};
+
+/// A parameter `e` in the RSA public key that is about to be assigned.
+#[derive(Clone, Debug)]
+pub enum RSAPubE {
+    /// A variable parameter `e`.
+    Var(Value<BigUint>),
+    /// A fixed parameter `e`.
+    Fix(BigUint),
 }
 
-#[derive(Debug, Clone)]
-pub struct DefaultMynaCircuit<F: PrimeField> {
-    pub hashed: Vec<u8>,       // A SHA256 hashed message
-    pub signature: Vec<u8>,    // A signature
-    pub public_key_n: BigUint, // pub public_key: RSAPublicKey<F>,
+/// A parameter `e` in the assigned RSA public key.
+#[derive(Clone, Debug)]
+pub enum AssignedRSAPubE<F: BigPrimeField> {
+    /// A variable parameter `e`.
+    Var(AssignedValue<F>),
+    /// A fixed parameter `e`.
+    Fix(BigUint),
+}
+
+/// RSA public key that is about to be assigned.
+#[derive(Clone, Debug)]
+pub struct RSAPublicKey<F: BigPrimeField> {
+    /// a modulus parameter
+    pub n: Value<BigUint>,
+    /// an exponent parameter
+    pub e: RSAPubE,
     _f: PhantomData<F>,
 }
-impl<F: PrimeField> Circuit<F> for DefaultMynaCircuit<F> {
-    type Config = DefaultMynaConfig<F>;
-    type FloorPlanner = SimpleFloorPlanner;
-    fn without_witnesses(&self) -> Self {
+
+impl<F: BigPrimeField> RSAPublicKey<F> {
+    /// Creates new [`RSAPublicKey`] from `n` and `e`.
+    ///
+    /// # Arguments
+    /// * n - an integer of `n`.
+    /// * e - a parameter `e`.
+    ///
+    /// # Return values
+    /// Returns new [`RSAPublicKey`].
+    pub fn new(n: Value<BigUint>, e: RSAPubE) -> Self {
         Self {
-            hashed: self.hashed.clone(),
-            signature: vec![],
-            public_key_n: self.public_key_n.clone(),
+            n,
+            e,
             _f: PhantomData,
         }
     }
 
-    fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
-        // todo read from config file
-        let range_config = RangeConfig::configure(meta, Vertical, &[10], &[1], 10, 17, 0, 18);
-        // todo read public_key_bits from config file
-        let signature_verification_config = SignVerifyConfig::configure(range_config, 2048);
-
-        let instance = meta.instance_column();
-        meta.enable_equality(instance);
-
-        DefaultMynaConfig {
-            signature_verification_config,
-            instance,
-        }
-    }
-
-    fn synthesize(
-        &self,
-        config: Self::Config,
-        mut layouter: impl Layouter<F>,
-    ) -> Result<(), Error> {
-        let mut first_pass = SKIP_FIRST_PASS;
-        let signature_bytes = &self.signature;
-        let public_key_n = &self.public_key_n;
-        let hashed_message = &self.hashed;
-
-        let mut public_cell = vec![];
-
-        layouter.assign_region(
-            || "MynaWallet",
-            |region| {
-                // todo what is this?
-                if first_pass {
-                    first_pass = false;
-                    return Ok(());
-                }
-
-                let ctx = &mut config
-                    .signature_verification_config
-                    .rsa_config
-                    .new_context(region);
-                let e = RSAPubE::Fix(BigUint::from(Self::DEFAULT_E));
-                let public_key = RSAPublicKey::<F>::new(Value::known(public_key_n.clone()), e);
-                let signature =
-                    RSASignature::<F>::new(Value::known(BigUint::from_bytes_be(signature_bytes)));
-
-                let hashed_msg_assigned = hashed_message
-                    .iter()
-                    .map(|limb| {
-                        config
-                            .signature_verification_config
-                            .rsa_config
-                            .gate()
-                            .load_witness(ctx, Value::known(F::from(*limb as u64)))
-                    })
-                    .collect::<Vec<AssignedValue<F>>>();
-                let (assigned_public_key, assigned_signature, assigned_hash) = config
-                    .signature_verification_config
-                    .verify_signature(ctx, &hashed_msg_assigned, public_key, signature)?;
-
-                let _ = assigned_public_key
-                    .n
-                    .limbs()
-                    .iter()
-                    .map(|v| public_cell.push(v.cell));
-
-                let _ = assigned_signature
-                    .c
-                    .limbs()
-                    .iter()
-                    .map(|v| public_cell.push(v.cell));
-
-                let _ = assigned_hash.iter().map(|v| public_cell.push(v.cell));
-
-                Ok(())
-            },
-        )?;
-
-        for (idx, cell) in public_cell.into_iter().enumerate() {
-            layouter.constrain_instance(cell, config.instance, idx)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl<F: PrimeField> DefaultMynaCircuit<F> {
-    pub const DEFAULT_E: u128 = 65537;
-
-    pub fn new(hashed: Vec<u8>, signature: Vec<u8>, public_key_n: BigUint) -> Self {
+    pub fn without_witness(fix_e: BigUint) -> Self {
+        let n = Value::unknown();
+        let e = RSAPubE::Fix(fix_e);
         Self {
-            hashed,
-            signature,
-            public_key_n,
+            n,
+            e,
             _f: PhantomData,
         }
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use halo2_base::halo2_proofs::dev::MockProver;
-    use halo2_base::halo2_proofs::halo2curves::bn256::Fr;
+/// An assigned RSA public key.
+#[derive(Clone, Debug)]
+pub struct AssignedRSAPublicKey<F: BigPrimeField> {
+    /// a modulus parameter
+    pub n: AssignedBigUint<F, Fresh>,
+    /// an exponent parameter
+    pub e: AssignedRSAPubE<F>,
+}
 
-    use num_bigint::BigUint;
-    use rand::thread_rng;
-    use rand::Rng;
-    use rsa::{Hash, PaddingScheme, PublicKeyParts, RsaPrivateKey, RsaPublicKey};
-    use sha2::{Digest, Sha256};
+impl<'v, F: BigPrimeField> AssignedRSAPublicKey<F> {
+    /// Creates new [`AssignedRSAPublicKey`] from assigned `n` and `e`.
+    ///
+    /// # Arguments
+    /// * n - an assigned integer of `n`.
+    /// * e - an assigned parameter `e`.
+    ///
+    /// # Return values
+    /// Returns new [`AssignedRSAPublicKey`].
+    pub fn new(n: AssignedBigUint<F, Fresh>, e: AssignedRSAPubE<F>) -> Self {
+        Self { n, e }
+    }
+}
 
-    #[test]
-    fn test_signature_verification() {
-        let bits = 2048;
+/// RSA signature that is about to be assigned.
+#[derive(Clone, Debug)]
+pub struct RSASignature<F: BigPrimeField> {
+    /// an integer of the signature.
+    pub c: Value<BigUint>,
+    _f: PhantomData<F>,
+}
 
-        // 1. Generate a key pair.
-        let mut rng = thread_rng();
-        let private_key = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
-        let public_key = RsaPublicKey::from(&private_key);
+impl<F: BigPrimeField> RSASignature<F> {
+    /// Creates new [`RSASignature`] from its integer.
+    ///
+    /// # Arguments
+    /// * c - an integer of the signature.
+    ///
+    /// # Return values
+    /// Returns new [`RSASignature`].
+    pub fn new(c: Value<BigUint>) -> Self {
+        Self { c, _f: PhantomData }
+    }
 
-        // 2. Uniformly sample a message.
-        let mut msg: [u8; 128] = [0; 128];
-        for x in &mut msg[..] {
-            *x = rng.gen();
-        }
+    pub fn without_witness() -> Self {
+        let c = Value::unknown();
+        Self { c, _f: PhantomData }
+    }
+}
 
-        // 3. Compute the SHA256 hash of `msg`.
-        let hashed_msg = Sha256::digest(msg);
+/// An assigned RSA signature.
+#[derive(Clone, Debug)]
+pub struct AssignedRSASignature<F: BigPrimeField> {
+    /// an integer of the signature.
+    pub c: AssignedBigUint<F, Fresh>,
+}
 
-        // 4. Generate a pkcs1v15 signature.
-        let padding = PaddingScheme::PKCS1v15Sign {
-            hash: Some(Hash::SHA2_256),
-        };
-        let sign = private_key
-            .sign(padding, &hashed_msg)
-            .expect("fail to sign a hashed message.");
-
-        let public_key_n = BigUint::from_bytes_be(&public_key.n().clone().to_bytes_be());
-
-        // 公開鍵をVec<Fr>に変換
-        let pub_key_vec = public_key
-            .n()
-            .clone()
-            .to_bytes_be()
-            .iter()
-            .map(|v| Fr::from(*v as u64))
-            .collect::<Vec<Fr>>();
-
-        // 署名をVec<Fr>に変換
-        let sign_vec = sign
-            .to_vec()
-            .iter()
-            .map(|v| Fr::from(*v as u64))
-            .collect::<Vec<Fr>>();
-
-        // ハッシュされたメッセージをVec<Fr>に変換
-        let hashed_vec = hashed_msg
-            .iter()
-            .map(|v| Fr::from(*v as u64))
-            .collect::<Vec<Fr>>();
-
-        // 公開鍵、署名、ハッシュされたメッセージを結合
-        let public_inputs = pub_key_vec
-            .iter()
-            .chain(sign_vec.iter())
-            .chain(hashed_vec.iter())
-            .cloned()
-            .collect::<Vec<Fr>>();
-
-        let circuit =
-            DefaultMynaCircuit::<Fr>::new(hashed_msg.to_vec(), sign.to_vec(), public_key_n);
-        let prover = MockProver::run(19, &circuit, vec![public_inputs]).unwrap();
-        assert_eq!(prover.verify(), Ok(()));
+impl<F: BigPrimeField> AssignedRSASignature<F> {
+    /// Creates new [`AssignedRSASignature`] from its assigned integer.
+    ///
+    /// # Arguments
+    /// * c - an assigned integer of the signature.
+    ///
+    /// # Return values
+    /// Returns new [`AssignedRSASignature`].
+    pub fn new(c: AssignedBigUint<F, Fresh>) -> Self {
+        Self { c }
     }
 }

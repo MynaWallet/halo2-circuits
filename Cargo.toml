@@ -6,20 +6,25 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 num-bigint = { version = "0.4", features = ["rand"] }
+num-traits = "0.2.15"
 sha2 = "0.10.6"
 rand = "0.8.5"
 rsa = { version = "0.6.1", features = ["serde"] }
-halo2-base = { version = "0.2.2", default-features = false, features = [
-    "halo2-pse",
-    "display",
-], git = "https://github.com/axiom-crypto/halo2-lib.git", rev = "9860acc" }
-halo2-ecc = { version = "0.2.2", default-features = false, features = [
-    "halo2-pse",
-    "display",
-], git = "https://github.com/axiom-crypto/halo2-lib.git", rev = "9860acc" }
 
-halo2-dynamic-sha256 = { git = "https://github.com/zkemail/halo2-dynamic-sha256.git", version = "0.1.0", branch = "main" }
-halo2-rsa = { git = "https://github.com/zkemail/halo2-rsa.git", version = "0.1.0", branch = "main", default-features = false }
+snark-verifier-sdk = { git = "https://github.com/axiom-crypto/snark-verifier.git", tag = "v0.1.1-ce", default-features = false, features = [
+    "halo2-pse",
+    "loader_halo2",
+] }
+halo2-base = { git = "https://github.com/axiom-crypto/halo2-lib", tag = "v0.3.0-ce", default-features = false, features = [
+    "halo2-pse",
+    "display",
+] }
+
+halo2-ecc = { git = "https://github.com/axiom-crypto/halo2-lib", tag = "v0.3.0-ce", default-features = false, features = [
+    "halo2-pse",
+    "display",
+] }
+
 
 serde_json = "1.0.95"
 serde = { version = "1.0.159", features = ["derive"] }
