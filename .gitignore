@@ -1,1 +1,6 @@
 /target
+params/
+/build
+/certs/*.pem
+!certs/example_myna.pem
+!certs/example_ca.pem
