@@ -73,6 +73,24 @@ enum Commands {
         #[arg(long, default_value = "./build/myna_verify_rsa.proof")]
         proof_path: String,
     },
+    GenRsaVerifyEVMProof {
+        /// k parameter for circuit.
+        #[arg(long, default_value = "17")]
+        k: u32,
+        /// setup parameters path
+        #[arg(short, long, default_value = "./params")]
+        params_path: String,
+        /// proving key path
+        #[arg(long, default_value = "./build/rsa.pk")]
+        pk_path: String,
+        #[arg(long, default_value = "./certs/myna_cert.pem")]
+        verify_cert_path: String,
+        #[arg(long, default_value = "./certs/ca_cert.pem")]
+        issuer_cert_path: String,
+        /// output proof file
+        #[arg(long, default_value = "./build/myna_verify_rsa.proof")]
+        proof_path: String,
+    },
 }
 
 #[tokio::main]
@@ -140,7 +158,54 @@ async fn main() {
                     Err(e) => println!("An error occurred: {}", e),
                 }
             }
-            gen_snark_shplonk(&params, &pk, builder, Some(Path::new(&proof_path)));
+            gen_snark_shplonk(&params, &pk, builder.clone(), Some(Path::new(&proof_path)));
+        }
+        Commands::GenRsaVerifyEVMProof {
+            k,
+            params_path,
+            pk_path,
+            verify_cert_path,
+            issuer_cert_path,
+            proof_path,
+        } => {
+            env::set_var("PARAMS_DIR", params_path);
+            let params = gen_srs(k);
+
+            let (tbs, signature_bigint) = extract_tbs_and_sig(&verify_cert_path);
+            let public_key_modulus = extract_public_key(&issuer_cert_path);
+
+            let builder = create_default_rsa_circuit_with_instances(
+                k as usize,
+                tbs,
+                public_key_modulus,
+                signature_bigint,
+            );
+            let pk =
+                read_pk::<BaseCircuitBuilder<Fr>>(Path::new(&pk_path), builder.params()).unwrap();
+
+            if Path::new(&proof_path).exists() {
+                match remove_file(&proof_path) {
+                    Ok(_) => println!("File found, overwriting..."),
+                    Err(e) => println!("An error occurred: {}", e),
+                }
+            }
+            gen_snark_shplonk(&params, &pk, builder.clone(), Some(Path::new(&proof_path)));
+
+            let deployment_code = gen_evm_verifier_shplonk::<BaseCircuitBuilder<Fr>>(
+                &params,
+                pk.get_vk(),
+                builder.num_instance(),
+                Some(Path::new("./build/VerifyRsa.sol")),
+            );
+
+            let proof = gen_evm_proof_shplonk(&params, &pk, builder.clone(), builder.instances());
+
+            println!("Size of the contract: {} bytes", deployment_code.len());
+            println!("Deploying contract...");
+
+            evm_verify(deployment_code, builder.instances(), proof);
+
+            println!("Verification success!");
         }
     }
 }
