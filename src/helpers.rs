@@ -55,7 +55,7 @@ pub fn extract_tbs_and_sig(cert_path: &str) -> (Vec<u8>, BigUint) {
 
     // Parse the PEM certificate using x509-parser
     let cert_pem = parse_x509_pem(&cert_pem_buffer)
-        .expect("Failed to parse cert 3 PEM")
+        .unwrap_or_else(|e| panic!("Failed to parse PEM ${:?} {:?}", &cert_path, e))
         .1;
     let cert = cert_pem
         .parse_x509()

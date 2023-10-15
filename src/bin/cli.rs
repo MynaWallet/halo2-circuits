@@ -1,20 +1,13 @@
 use clap::{Parser, Subcommand};
 use halo2_base::{
-    gates::circuit::{builder::BaseCircuitBuilder, BaseCircuitParams, CircuitBuilderStage},
-    gates::flex_gate::MultiPhaseThreadBreakPoints,
-    halo2_proofs::halo2curves::bn256::Fr,
-    halo2_proofs::plonk::Circuit,
-    utils::fs::gen_srs,
+    gates::circuit::builder::BaseCircuitBuilder, halo2_proofs::halo2curves::bn256::Fr,
+    halo2_proofs::plonk::Circuit, utils::fs::gen_srs,
 };
 use halo2_circuits::helpers::*;
-use halo2_circuits::*;
 use snark_verifier_sdk::{
-    evm::{evm_verify, gen_evm_proof_shplonk, gen_evm_verifier_shplonk},
+    evm::{evm_verify, gen_evm_proof_shplonk, gen_evm_verifier_shplonk, write_calldata},
     gen_pk,
-    halo2::{
-        aggregation::{AggregationCircuit, AggregationConfigParams, VerifierUniversality},
-        gen_snark_shplonk, read_snark,
-    },
+    halo2::{gen_snark_shplonk, read_snark},
     read_pk, CircuitExt,
 };
 use std::env;
