@@ -59,12 +59,23 @@ You can refer to these repos of RSA verification circuits.
 
 - [halo2-rsa](https://github.com/zkemail/halo2-rsa/tree/feat/new_bigint)
 - [zk-email-verify](https://github.com/zkemail/zk-email-verify)
+- [zkCert](https://github.com/zkCert/halo2-rsa)
 
 ## Example Usage
-
-### Generate k-degree parameters
 
 ```bash
 # `k`: degree that expresses the size of circuit (i.e., 2^k is the number of rows in the circuit)
 cargo run -r gen-params --k 17
+```
+
+```bash
+cargo run -r gen-rsa-keys
+```
+
+```bash
+cargo run -r prove-rsa
+```
+
+```bash
+cargo run -r gen-rsa-verify-evm-proof
 ```

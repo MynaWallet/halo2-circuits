@@ -2,5 +2,5 @@
 params/
 /build
 /certs/*.pem
-!certs/example_myna.pem
-!certs/example_ca.pem
+!certs/myna_cert.pem
+!certs/ca_cert.pem
