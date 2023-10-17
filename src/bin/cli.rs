@@ -12,8 +12,7 @@ use snark_verifier_sdk::{
 };
 use std::env;
 use std::fs::{remove_file, File};
-use std::io::prelude::*;
-use std::{fs, io, path::Path};
+use std::{path::Path};
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
