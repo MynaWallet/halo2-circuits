@@ -7,12 +7,12 @@ use halo2_circuits::helpers::*;
 use snark_verifier_sdk::{
     evm::{evm_verify, gen_evm_proof_shplonk, gen_evm_verifier_shplonk, write_calldata},
     gen_pk,
-    halo2::{gen_snark_shplonk, read_snark},
+    halo2::gen_snark_shplonk,
     read_pk, CircuitExt,
 };
 use std::env;
-use std::fs::{remove_file, File};
-use std::{path::Path};
+use std::fs::remove_file;
+use std::path::Path;
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
