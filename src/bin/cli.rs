@@ -13,7 +13,7 @@ use snark_verifier_sdk::{
 use std::env;
 use std::fs::{remove_file, File};
 use std::io::prelude::*;
-use std::path::Path;
+use std::{fs, io, path::Path};
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -196,9 +196,13 @@ async fn main() {
             println!("Size of the contract: {} bytes", deployment_code.len());
             println!("Deploying contract...");
 
-            evm_verify(deployment_code, builder.instances(), proof);
+            evm_verify(deployment_code, builder.instances(), proof.clone());
 
             println!("Verification success!");
+
+            write_calldata(&builder.instances(), &proof, Path::new("./build/calldata.txt")).unwrap();
+            println!("Succesfully generate calldata!");
+           
         }
     }
 }
