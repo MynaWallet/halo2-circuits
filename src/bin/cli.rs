@@ -7,12 +7,11 @@ use halo2_circuits::helpers::*;
 use snark_verifier_sdk::{
     evm::{evm_verify, gen_evm_proof_shplonk, gen_evm_verifier_shplonk, write_calldata},
     gen_pk,
-    halo2::{gen_snark_shplonk, read_snark},
+    halo2::gen_snark_shplonk,
     read_pk, CircuitExt,
 };
 use std::env;
-use std::fs::{remove_file, File};
-use std::io::prelude::*;
+use std::fs::remove_file;
 use std::path::Path;
 
 #[derive(Parser, Debug, Clone)]
@@ -196,9 +195,13 @@ async fn main() {
             println!("Size of the contract: {} bytes", deployment_code.len());
             println!("Deploying contract...");
 
-            evm_verify(deployment_code, builder.instances(), proof);
+            evm_verify(deployment_code, builder.instances(), proof.clone());
 
             println!("Verification success!");
+
+            write_calldata(&builder.instances(), &proof, Path::new("./build/calldata.txt")).unwrap();
+            println!("Succesfully generate calldata!");
+           
         }
     }
 }
